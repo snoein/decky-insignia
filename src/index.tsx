@@ -176,6 +176,11 @@ function MenuPage({
   );
 }
 
+// Matches the backend's ACTIVE_GAMES_CACHE_TTL_SECONDS, so the panel's
+// background poll lands right as the server-side cache entry expires instead
+// of hammering a still-cached response.
+const ACTIVE_GAMES_POLL_INTERVAL_MS = 60_000;
+
 function ActiveGamesPage({ onBack }: { onBack: () => void }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -190,24 +195,40 @@ function ActiveGamesPage({ onBack }: { onBack: () => void }) {
     return () => registration.unregister();
   }, []);
 
-  const fetchStats = useCallback((isRefresh: boolean) => {
-    if (isRefresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
+  // `background` polls skip the loading/refreshing indicators so the
+  // periodic auto-refresh below doesn't flash the "Loading..." state or spin
+  // the refresh icon while the panel is just sitting open.
+  const fetchStats = useCallback((isRefresh: boolean, background = false) => {
+    if (!background) {
+      if (isRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
     }
     return getActiveGames(isRefresh)
       .then((result) => {
         setStats(result);
       })
       .finally(() => {
-        setLoading(false);
-        setRefreshing(false);
+        if (!background) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       });
   }, []);
 
   useEffect(() => {
     fetchStats(false);
+  }, [fetchStats]);
+
+  // Keeps the panel's numbers current while it's left open, rather than only
+  // refreshing on mount (i.e. reopening the QAM sidemenu).
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchStats(false, true);
+    }, ACTIVE_GAMES_POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
   }, [fetchStats]);
 
   const handleRefresh = useCallback(() => {
