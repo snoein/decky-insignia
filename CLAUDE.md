@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Insignia is a [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) plugin for the Steam Deck's Quick Access Menu. It fetches live player/lobby stats from the Insignia network (`https://insigniastats.live/api/online-users`) and displays them in a QAM panel. It was bootstrapped from the decky-plugin-template, so a lot of the surrounding tooling (VSCode tasks, `backend/` C stub) is template scaffolding rather than Insignia-specific code.
+Insignia is a [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) plugin for the Steam Deck's Quick Access Menu. It fetches live player/lobby stats from the Insignia network (`https://insigniastats.live/api/online-users`) and displays them in a QAM panel. It was bootstrapped from the decky-plugin-template, so a lot of the surrounding tooling (VSCode tasks) is template scaffolding rather than Insignia-specific code. The template's `backend/` C stub (for plugins needing a compiled native binary) was removed — Insignia has no native backend, all logic is in `main.py`.
 
 ## Commands
 
@@ -55,5 +55,4 @@ A Decky plugin has two independently-built halves that communicate over a Python
 - **`get_active_games`** fetches the Insignia stats endpoint fresh on every call (no caching) so the frontend's refresh button and panel reopen always show current data.
 - **`_parse_stats_response` / `_normalize_games`** exist because the Insignia API's response shape isn't documented/guaranteed — they defensively handle several possible shapes (bare list, dict wrapping a list under various keys, a single flat total, or a dict keyed by game title) and normalize all of them into `{"error": bool, "games": [...], "total": int}`. When touching this endpoint's parsing, preserve that defensiveness rather than assuming one fixed shape.
 - **`py_modules/`** vendors the backend's third-party Python deps (`requests`, `urllib3`, `certifi`, `charset_normalizer`, `idna`) because decky plugins run in a restricted Python environment without pip access at runtime; it's gitignored and regenerated from `requirements.txt`.
-- **`backend/`** (C `main.c`, `Makefile`, `Dockerfile`) is unused template boilerplate for plugins that need a compiled native backend binary. Insignia has no native backend — all logic is in `main.py` — so this directory can generally be ignored.
 - **`plugin.json`** is the decky manifest (name, flags, `api_version`); **`defaults/`** would hold any bundled static assets (themes/configs) shipped alongside `dist/` and `main.py`, currently unused beyond a placeholder.
