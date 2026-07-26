@@ -816,18 +816,41 @@ let tileBadgeIdCounter = 0;
 let tileObserver: MutationObserver | null = null;
 let tileScanInterval: ReturnType<typeof setInterval> | null = null;
 
-function scanAndBadgeTiles() {
+// This Steam version renders home/library tiles as role="listitem" in
+// shelf/carousel views and role="gridcell" in grid views, with no shared
+// wrapper class to scope the query to (the ReactVirtualized classes this
+// selector used to require no longer exist in either view).
+const TILE_SELECTOR = 'div[role="listitem"], div[role="gridcell"]';
+
+// node.nodeType === 1 (Node.ELEMENT_NODE) rather than `instanceof
+// HTMLElement`: mutation records come from win's document, a different
+// window context than this closure's, and instanceof against the wrong
+// window's HTMLElement silently returns false for its elements.
+function collectTiles(node: Node): HTMLElement[] {
+  if (node.nodeType !== 1) return [];
+  const el = node as HTMLElement;
+  const tiles = Array.from(el.querySelectorAll<HTMLElement>(TILE_SELECTOR));
+  if (el.matches(TILE_SELECTOR)) tiles.push(el);
+  return tiles;
+}
+
+// Scans `tiles` if given, otherwise every tile in the document. Callers that
+// already know which tiles changed (the MutationObserver below) pass that
+// narrower set so a scan doesn't cost a full-document requery plus per-tile
+// work (getComputedStyle, fiber walk, fuzzy name match) for every tile on
+// screen -- see startTileBadging for why that matters while scrolling.
+function scanAndBadgeTiles(tiles?: Iterable<HTMLElement>) {
   const win = findSP() as any;
   if (!win) return;
 
-  // This Steam version renders home/library tiles as role="listitem" in
-  // shelf/carousel views and role="gridcell" in grid views, with no shared
-  // wrapper class to scope the query to (the ReactVirtualized classes this
-  // selector used to require no longer exist in either view).
-  const tiles: NodeListOf<HTMLElement> = win.document.querySelectorAll(
-    'div[role="listitem"], div[role="gridcell"]'
-  );
-  tiles.forEach((tile) => {
+  let tileList: HTMLElement[];
+  if (tiles) {
+    tileList = Array.from(tiles);
+  } else {
+    const allTiles: NodeListOf<HTMLElement> = win.document.querySelectorAll(TILE_SELECTOR);
+    tileList = Array.from(allTiles);
+  }
+  tileList.forEach((tile) => {
     const target = getBadgeTargetElement(tile);
     // Scoped to the whole tile, not just the current target: which element
     // findPosterContainer picks for a given tile can change across scans (the
@@ -898,11 +921,29 @@ function startTileBadging() {
     clearInterval(tileScanInterval);
   }
 
-  loadXboxRomAppIds().then(scanAndBadgeTiles);
+  loadXboxRomAppIds().then(() => scanAndBadgeTiles());
   scanAndBadgeTiles();
-  tileObserver = new MutationObserver(() => scanAndBadgeTiles());
+  // Scoped to just the tiles added in these mutations, not a full-document
+  // rescan: Steam's home page is a virtualized carousel/grid, so scrolling
+  // constantly adds/removes tile DOM nodes elsewhere on the page, each of
+  // which used to retrigger scanAndBadgeTiles' full querySelectorAll +
+  // per-tile work (getComputedStyle, fiber walk, fuzzy name match) right as
+  // the browser was trying to lay out and paint the scroll -- enough main
+  // thread work to visibly jank scrolling. A tile recycled in place (same
+  // node, new game, only its attributes/text changed) doesn't fire a
+  // childList mutation on the tile itself, so it isn't caught here; the
+  // interval below is what still picks those up.
+  tileObserver = new MutationObserver((mutations) => {
+    const addedTiles = new Set<HTMLElement>();
+    for (const mutation of mutations) {
+      mutation.addedNodes.forEach((node) => {
+        collectTiles(node).forEach((tile) => addedTiles.add(tile));
+      });
+    }
+    if (addedTiles.size > 0) scanAndBadgeTiles(addedTiles);
+  });
   tileObserver.observe(win.document.body, { childList: true, subtree: true });
-  tileScanInterval = setInterval(scanAndBadgeTiles, 2000);
+  tileScanInterval = setInterval(() => scanAndBadgeTiles(), 2000);
 }
 
 function stopTileBadging() {
