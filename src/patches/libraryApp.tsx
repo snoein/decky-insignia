@@ -1,12 +1,12 @@
 import { afterPatch, useParams } from "@decky/ui";
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
-import { InsigniaIcon } from "./InsigniaIcon";
-import { getGameOnlineCount } from "./api";
-import { xboxRomAppIdSet, loadXboxRomAppIds } from "./xboxRomIds";
-import { findMatchingInsigniaGame } from "./gameMatching";
-import { playcountBadgeEnabled } from "./settingsState";
-import { useIsOnline } from "./hooks/useIsOnline";
+import { InsigniaIcon } from "../InsigniaIcon";
+import { getGameOnlineCount } from "../api";
+import { xboxRomAppIdSet, loadXboxRomAppIds } from "../xboxRomIds";
+import { findMatchingInsigniaGame } from "../gameMatching";
+import { playcountBadgeEnabled } from "../settingsState";
+import { useIsOnline } from "../hooks/useIsOnline";
 
 // Position/size/color matched to the "X Online" player-count badge another
 // installed plugin renders in the same top-right spot on this page, so
