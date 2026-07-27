@@ -3,10 +3,10 @@ import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { InsigniaIcon } from "./InsigniaIcon";
 import { getGameOnlineCount } from "./api";
-import { EConnectivityTestResult } from "./types";
 import { xboxRomAppIdSet, loadXboxRomAppIds } from "./xboxRomIds";
 import { findMatchingInsigniaGame } from "./gameMatching";
 import { playcountBadgeEnabled } from "./settingsState";
+import { useIsOnline } from "./hooks/useIsOnline";
 
 // Position/size/color matched to the "X Online" player-count badge another
 // installed plugin renders in the same top-right spot on this page, so
@@ -106,34 +106,13 @@ function LibraryPlaycountBadge() {
   const insigniaGame = findMatchingInsigniaGame(displayName);
 
   const [onlineCount, setOnlineCount] = useState<number | null>(null);
-
-  // navigator.onLine only reflects whether the OS has *some* network
-  // interface up -- it stays true on a Wi-Fi with no real internet (captive
-  // portal, dead upstream), which is exactly the case most worth skipping a
-  // doomed fetch for. SteamClient's own connectivity test (already used by
-  // ActiveGamesPage above) is what Steam itself uses to know if it's really
-  // reachable, so this reuses that instead.
-  const [connectivity, setConnectivity] = useState(EConnectivityTestResult.Unknown);
-
-  useEffect(() => {
-    const registration = SteamClient.System.Network.RegisterForConnectivityTestChanges(
-      (test) => setConnectivity(test.eConnectivityTestResult)
-    );
-    SteamClient.System.Network.ForceTestConnectivity();
-    return () => registration.unregister();
-  }, []);
+  const isOnline = useIsOnline();
 
   useEffect(() => {
     if (!insigniaGame) {
       setOnlineCount(null);
       return;
     }
-    // Treated as online unless a test has actually come back bad: Unknown is
-    // the state before the first ForceTestConnectivity result lands, and
-    // defaulting it to "offline" would skip the very first fetch on every
-    // page open just because that result hasn't arrived yet.
-    const isOffline =
-      connectivity !== EConnectivityTestResult.Unknown && connectivity !== EConnectivityTestResult.Connected;
     let cancelled = false;
     const fetchCount = () => {
       // Re-checked on every call (not just once per effect run) since the
@@ -142,7 +121,7 @@ function LibraryPlaycountBadge() {
       // SettingsPage's toggle -- no point spending a request (and a 10s
       // backend timeout on a dead connection) on a badge that's hidden or
       // can't reach the network anyway.
-      if (!playcountBadgeEnabled || isOffline) return;
+      if (!playcountBadgeEnabled || !isOnline) return;
       getGameOnlineCount(insigniaGame.id)
         .then((count) => {
           if (!cancelled) setOnlineCount(count);
@@ -160,7 +139,7 @@ function LibraryPlaycountBadge() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [insigniaGame?.id, connectivity]);
+  }, [insigniaGame?.id, isOnline]);
 
   // patchLibraryApp's wrapper (see below) contains the page's own rendered
   // content alongside this component -- used below to locate the page's

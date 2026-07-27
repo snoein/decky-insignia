@@ -3,8 +3,9 @@ import { useEffect, useState, useCallback } from "react";
 import { FaTimes } from "react-icons/fa";
 import { Header, ICON_BUTTON_STYLE } from "./Header";
 import { getUpcomingEvents } from "../api";
-import { InsigniaEvent, EventsResponse, EConnectivityTestResult } from "../types";
+import { InsigniaEvent, EventsResponse } from "../types";
 import { useIs24HourClock } from "../hooks/useIs24HourClock";
+import { useIsOnline } from "../hooks/useIsOnline";
 
 // `new Date(iso)` plus Intl.DateTimeFormat with no explicit locale/timeZone
 // both default to the system's -- this is what actually satisfies "translate
@@ -113,15 +114,7 @@ export function EventsPage({ onBack }: { onBack: () => void }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [eventsResponse, setEventsResponse] = useState<EventsResponse | null>(null);
-  const [connectivity, setConnectivity] = useState(EConnectivityTestResult.Unknown);
-
-  useEffect(() => {
-    const registration = SteamClient.System.Network.RegisterForConnectivityTestChanges(
-      (test) => setConnectivity(test.eConnectivityTestResult)
-    );
-    SteamClient.System.Network.ForceTestConnectivity();
-    return () => registration.unregister();
-  }, []);
+  const isOnline = useIsOnline();
 
   const fetchEvents = useCallback((isRefresh: boolean) => {
     if (isRefresh) {
@@ -162,12 +155,9 @@ export function EventsPage({ onBack }: { onBack: () => void }) {
   }
 
   if (!eventsResponse || eventsResponse.error) {
-    const offline =
-      connectivity !== EConnectivityTestResult.Unknown &&
-      connectivity !== EConnectivityTestResult.Connected;
-    const message = offline
-      ? "No internet connection. Check your wifi."
-      : "Could not load events. Insignia service may be unreachable.";
+    const message = isOnline
+      ? "Could not load events. Insignia service may be unreachable."
+      : "No internet connection. Check your wifi.";
 
     return (
       <PanelSection>
