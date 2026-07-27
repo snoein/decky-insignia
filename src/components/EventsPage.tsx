@@ -1,11 +1,12 @@
 import { PanelSection, PanelSectionRow, DialogButton, ModalRoot, showModal } from "@decky/ui";
-import { useEffect, useState, useCallback } from "react";
+import { useCallback } from "react";
 import { FaTimes } from "react-icons/fa";
 import { Header, ICON_BUTTON_STYLE } from "./Header";
 import { getUpcomingEvents } from "../api";
-import { InsigniaEvent, EventsResponse } from "../types";
+import { InsigniaEvent } from "../types";
 import { useIs24HourClock } from "../hooks/useIs24HourClock";
 import { useIsOnline } from "../hooks/useIsOnline";
+import { useRefreshableData } from "../hooks/useRefreshableData";
 
 // `new Date(iso)` plus Intl.DateTimeFormat with no explicit locale/timeZone
 // both default to the system's -- this is what actually satisfies "translate
@@ -111,42 +112,16 @@ function EventRow({ event }: { event: InsigniaEvent }) {
 }
 
 export function EventsPage({ onBack }: { onBack: () => void }) {
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [eventsResponse, setEventsResponse] = useState<EventsResponse | null>(null);
-  const isOnline = useIsOnline();
-
-  const fetchEvents = useCallback((isRefresh: boolean) => {
-    if (isRefresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
-    return getUpcomingEvents(isRefresh)
-      .then((result) => {
-        setEventsResponse(result);
-      })
-      .finally(() => {
-        setLoading(false);
-        setRefreshing(false);
-      });
-  }, []);
-
   // Events don't change minute-to-minute like live player counts, so unlike
   // ActiveGamesPage this only fetches on mount plus an explicit refresh --
   // no background polling interval.
-  useEffect(() => {
-    fetchEvents(false);
-  }, [fetchEvents]);
-
-  const handleRefresh = useCallback(() => {
-    fetchEvents(true);
-  }, [fetchEvents]);
+  const { data: eventsResponse, loading, refreshing, refresh } = useRefreshableData(getUpcomingEvents);
+  const isOnline = useIsOnline();
 
   if (loading) {
     return (
       <PanelSection>
-        <Header title="Events" onBack={onBack} refreshing={refreshing} onRefresh={handleRefresh} />
+        <Header title="Events" onBack={onBack} refreshing={refreshing} onRefresh={refresh} />
         <PanelSectionRow>
           <div>Loading Insignia events...</div>
         </PanelSectionRow>
@@ -161,7 +136,7 @@ export function EventsPage({ onBack }: { onBack: () => void }) {
 
     return (
       <PanelSection>
-        <Header title="Events" onBack={onBack} refreshing={refreshing} onRefresh={handleRefresh} />
+        <Header title="Events" onBack={onBack} refreshing={refreshing} onRefresh={refresh} />
         <PanelSectionRow>
           <div>{message}</div>
         </PanelSectionRow>
@@ -174,7 +149,7 @@ export function EventsPage({ onBack }: { onBack: () => void }) {
   if (events.length === 0) {
     return (
       <PanelSection>
-        <Header title="Events" onBack={onBack} refreshing={refreshing} onRefresh={handleRefresh} />
+        <Header title="Events" onBack={onBack} refreshing={refreshing} onRefresh={refresh} />
         <PanelSectionRow>
           <div>No events in the next 14 days.</div>
         </PanelSectionRow>
@@ -184,7 +159,7 @@ export function EventsPage({ onBack }: { onBack: () => void }) {
 
   return (
     <PanelSection>
-      <Header title="Events" onBack={onBack} refreshing={refreshing} onRefresh={handleRefresh} />
+      <Header title="Events" onBack={onBack} refreshing={refreshing} onRefresh={refresh} />
       {events.map((event) => (
         <EventRow key={event.id} event={event} />
       ))}
