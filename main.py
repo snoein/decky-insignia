@@ -9,11 +9,11 @@ import sys
 import decky
 import asyncio
 
-# Must run before importing backend.xbox_shortcuts, which imports vdf from
-# py_modules at module scope.
+# Must run before importing insignia_backend.xbox_shortcuts, which imports
+# vdf from py_modules at module scope.
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "py_modules"))
 
-from backend import events, settings, stats, xbox_shortcuts
+from insignia_backend import events, settings, stats, xbox_shortcuts
 
 
 class Plugin:
