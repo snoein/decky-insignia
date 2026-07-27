@@ -4,6 +4,8 @@ import {
   Focusable,
   DialogButton,
   ToggleField,
+  ModalRoot,
+  showModal,
   staticClasses,
   afterPatch,
   findSP,
@@ -16,9 +18,10 @@ import {
 } from "@decky/api"
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
-import { FaSyncAlt, FaArrowLeft, FaChevronRight } from "react-icons/fa";
+import { FaSyncAlt, FaArrowLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 import { InsigniaIcon } from "./InsigniaIcon";
 import { INSIGNIA_GAMES, InsigniaGame } from "./insigniaGames";
+import { initUse24HourClock, useIs24HourClock } from "./hooks/useIs24HourClock";
 
 type ActiveGame = {
   name: string;
@@ -30,6 +33,28 @@ type ActiveGamesResponse = {
   message?: string;
   games?: ActiveGame[];
   total?: number;
+};
+
+type InsigniaEvent = {
+  id: number;
+  game: string;
+  title: string;
+  description?: string;
+  image?: string;
+  startUtc: string;
+  endUtc?: string;
+  hasPrize?: boolean;
+  prizeAmount?: number | null;
+  isPaidEvent?: boolean;
+  entryFeeSats?: number | null;
+  tournamentStatus?: string;
+  signupCount?: number;
+};
+
+type EventsResponse = {
+  error: boolean;
+  message?: string;
+  events?: InsigniaEvent[];
 };
 
 // Mirrors @decky/ui's EConnectivityTestResult, which isn't exported from the
@@ -49,6 +74,13 @@ enum EConnectivityTestResult {
 // caches successful responses for 60s; pass forceRefresh=true (wired to the
 // panel's refresh button) to bypass that cache.
 const getActiveGames = callable<[forceRefresh?: boolean], ActiveGamesResponse>("get_active_games");
+
+// Calls the python function "get_upcoming_events", which fetches Insignia
+// network events/tournaments and returns only those starting in the next 14
+// days, sorted soonest-first. The backend caches successful responses for 5
+// minutes; pass forceRefresh=true (wired to the panel's refresh button) to
+// bypass that cache.
+const getUpcomingEvents = callable<[forceRefresh?: boolean], EventsResponse>("get_upcoming_events");
 
 // Looks up a single title's current online count by its Insignia title ID,
 // sharing get_active_games' 60s cache on the backend rather than triggering
@@ -147,9 +179,11 @@ function Header({
 
 function MenuPage({
   onNavigateActiveGames,
+  onNavigateEvents,
   onNavigateSettings,
 }: {
   onNavigateActiveGames: () => void;
+  onNavigateEvents: () => void;
   onNavigateSettings: () => void;
 }) {
   return (
@@ -160,6 +194,15 @@ function MenuPage({
           style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
         >
           <span>Active Games</span>
+          <FaChevronRight />
+        </DialogButton>
+      </PanelSectionRow>
+      <PanelSectionRow>
+        <DialogButton
+          onClick={onNavigateEvents}
+          style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+        >
+          <span>Events</span>
           <FaChevronRight />
         </DialogButton>
       </PanelSectionRow>
@@ -288,6 +331,202 @@ function ActiveGamesPage({ onBack }: { onBack: () => void }) {
       ) : (
         <StatRow label="Total Active Players" value={total} />
       )}
+    </PanelSection>
+  );
+}
+
+// `new Date(iso)` plus Intl.DateTimeFormat with no explicit locale/timeZone
+// both default to the system's -- this is what actually satisfies "translate
+// to system timezone", no manual offset math needed.
+function formatEventDateTime(iso: string, is24Hour: boolean | null): string {
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: is24Hour === null ? undefined : !is24Hour,
+  }).format(new Date(iso));
+}
+
+// Built on ModalRoot rather than ConfirmModal: ConfirmModal always renders
+// its own OK/Cancel button row at the bottom with no prop to remove it, but
+// we want a single close affordance top-right instead. ModalRoot is the
+// lower-level primitive ConfirmModal itself is built on (confirmed live: its
+// runtime lookup is keyed off "Either closeModal or onCancel should be
+// passed to GenericDialog"), giving full control over the button while
+// keeping the standard dialog box/backdrop chrome.
+function EventDetailModal({ event, closeModal }: { event: InsigniaEvent; closeModal?: () => void }) {
+  const is24Hour = useIs24HourClock();
+  const start = formatEventDateTime(event.startUtc, is24Hour);
+  const end = event.endUtc ? formatEventDateTime(event.endUtc, is24Hour) : null;
+
+  return (
+    <ModalRoot onCancel={closeModal} bHideCloseIcon>
+      <div style={{ position: "relative" }}>
+        <DialogButton
+          onClick={closeModal}
+          style={{ ...ICON_BUTTON_STYLE, position: "absolute", top: 0, right: 0 }}
+        >
+          <FaTimes />
+        </DialogButton>
+        <div style={{ fontWeight: "bold", fontSize: "1.2em", paddingRight: "36px", marginBottom: "12px" }}>
+          {event.title}
+        </div>
+        <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+          {event.image && (
+            <img
+              src={event.image}
+              style={{
+                width: "35%",
+                maxHeight: "80vh",
+                objectFit: "contain",
+                borderRadius: "8px",
+                flexShrink: 0,
+              }}
+            />
+          )}
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px", minWidth: 0 }}>
+            <div style={{ fontWeight: "bold" }}>{event.game}</div>
+            <div>{end ? `${start} – ${end}` : start}</div>
+            {event.description && <div style={{ whiteSpace: "pre-wrap" }}>{event.description}</div>}
+            {event.hasPrize && (
+              <div>Prize{event.prizeAmount != null ? `: ${event.prizeAmount}` : ""}</div>
+            )}
+            {event.isPaidEvent && event.entryFeeSats != null && (
+              <div>Entry fee: {event.entryFeeSats} sats</div>
+            )}
+            {event.tournamentStatus && (
+              <div>
+                Tournament status: {event.tournamentStatus}
+                {typeof event.signupCount === "number" ? ` (${event.signupCount} signed up)` : ""}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </ModalRoot>
+  );
+}
+
+function EventRow({ event }: { event: InsigniaEvent }) {
+  const is24Hour = useIs24HourClock();
+  const handleOpen = useCallback(() => {
+    showModal(<EventDetailModal event={event} />);
+  }, [event]);
+
+  return (
+    <PanelSectionRow>
+      <DialogButton
+        onClick={handleOpen}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-start",
+          gap: "2px",
+          width: "100%",
+          textAlign: "left",
+        }}
+      >
+        <span style={{ fontWeight: "bold", width: "100%", textAlign: "left" }}>{event.game}</span>
+        <span style={{ width: "100%", textAlign: "left" }}>{event.title}</span>
+        <span style={{ opacity: 0.7, fontSize: "12px", width: "100%", textAlign: "left" }}>
+          {formatEventDateTime(event.startUtc, is24Hour)}
+        </span>
+      </DialogButton>
+    </PanelSectionRow>
+  );
+}
+
+function EventsPage({ onBack }: { onBack: () => void }) {
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [eventsResponse, setEventsResponse] = useState<EventsResponse | null>(null);
+  const [connectivity, setConnectivity] = useState(EConnectivityTestResult.Unknown);
+
+  useEffect(() => {
+    const registration = SteamClient.System.Network.RegisterForConnectivityTestChanges(
+      (test) => setConnectivity(test.eConnectivityTestResult)
+    );
+    SteamClient.System.Network.ForceTestConnectivity();
+    return () => registration.unregister();
+  }, []);
+
+  const fetchEvents = useCallback((isRefresh: boolean) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+    return getUpcomingEvents(isRefresh)
+      .then((result) => {
+        setEventsResponse(result);
+      })
+      .finally(() => {
+        setLoading(false);
+        setRefreshing(false);
+      });
+  }, []);
+
+  // Events don't change minute-to-minute like live player counts, so unlike
+  // ActiveGamesPage this only fetches on mount plus an explicit refresh --
+  // no background polling interval.
+  useEffect(() => {
+    fetchEvents(false);
+  }, [fetchEvents]);
+
+  const handleRefresh = useCallback(() => {
+    fetchEvents(true);
+  }, [fetchEvents]);
+
+  if (loading) {
+    return (
+      <PanelSection>
+        <Header title="Events" onBack={onBack} refreshing={refreshing} onRefresh={handleRefresh} />
+        <PanelSectionRow>
+          <div>Loading Insignia events...</div>
+        </PanelSectionRow>
+      </PanelSection>
+    );
+  }
+
+  if (!eventsResponse || eventsResponse.error) {
+    const offline =
+      connectivity !== EConnectivityTestResult.Unknown &&
+      connectivity !== EConnectivityTestResult.Connected;
+    const message = offline
+      ? "No internet connection. Check your wifi."
+      : "Could not load events. Insignia service may be unreachable.";
+
+    return (
+      <PanelSection>
+        <Header title="Events" onBack={onBack} refreshing={refreshing} onRefresh={handleRefresh} />
+        <PanelSectionRow>
+          <div>{message}</div>
+        </PanelSectionRow>
+      </PanelSection>
+    );
+  }
+
+  const events = eventsResponse.events ?? [];
+
+  if (events.length === 0) {
+    return (
+      <PanelSection>
+        <Header title="Events" onBack={onBack} refreshing={refreshing} onRefresh={handleRefresh} />
+        <PanelSectionRow>
+          <div>No events in the next 14 days.</div>
+        </PanelSectionRow>
+      </PanelSection>
+    );
+  }
+
+  return (
+    <PanelSection>
+      <Header title="Events" onBack={onBack} refreshing={refreshing} onRefresh={handleRefresh} />
+      {events.map((event) => (
+        <EventRow key={event.id} event={event} />
+      ))}
     </PanelSection>
   );
 }
@@ -964,11 +1203,29 @@ function patchLibraryHome(route: any) {
   return route;
 }
 
+type MenuView = "menu" | "activeGames" | "events" | "settings";
+
+// Opening a modal (e.g. EventDetailModal) unmounts Content -- confirmed
+// live: closing the modal previously always landed back on the root menu
+// even if you'd drilled into a sub-page first. Persisting the current view
+// here (same module-level-variable idiom as playcountBadgeEnabled/
+// tileBadgeEnabled above) survives that remount, so Content picks back up
+// wherever the user left off instead of resetting.
+let lastMenuView: MenuView = "menu";
+
 function Content() {
-  const [view, setView] = useState<"menu" | "activeGames" | "settings">("menu");
+  const [view, setViewState] = useState<MenuView>(lastMenuView);
+  const setView = useCallback((next: MenuView) => {
+    lastMenuView = next;
+    setViewState(next);
+  }, []);
 
   if (view === "activeGames") {
     return <ActiveGamesPage onBack={() => setView("menu")} />;
+  }
+
+  if (view === "events") {
+    return <EventsPage onBack={() => setView("menu")} />;
   }
 
   if (view === "settings") {
@@ -978,6 +1235,7 @@ function Content() {
   return (
     <MenuPage
       onNavigateActiveGames={() => setView("activeGames")}
+      onNavigateEvents={() => setView("events")}
       onNavigateSettings={() => setView("settings")}
     />
   );
@@ -991,6 +1249,7 @@ export default definePlugin(() => {
     tileBadgeEnabled = enabled;
   });
   loadXboxRomAppIds();
+  initUse24HourClock();
 
   const libraryAppPatch = routerHook.addPatch("/library/app/:appid", patchLibraryApp);
   const libraryHomePatch = routerHook.addPatch("/library/home", patchLibraryHome);
