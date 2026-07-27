@@ -5,9 +5,9 @@ import { initUse24HourClock } from "./hooks/useIs24HourClock";
 import { getPlaycountBadgeEnabled, getTileBadgeEnabled } from "./api";
 import { setPlaycountBadgeEnabled, setTileBadgeEnabled } from "./settingsState";
 import { loadXboxRomAppIds } from "./xboxRomIds";
-import { patchLibraryApp } from "./libraryBadge";
-import { patchLibraryHome, stopTileBadging } from "./tileBadge";
-import { Content } from "./components/Content";
+import { patchLibraryApp } from "./patches/libraryApp";
+import { patchLibraryHome, stopTileBadging } from "./patches/libraryHome";
+import { ContentPage } from "./pages/ContentPage";
 
 export default definePlugin(() => {
   getPlaycountBadgeEnabled().then(setPlaycountBadgeEnabled);
@@ -24,7 +24,7 @@ export default definePlugin(() => {
     // The element displayed at the top of your plugin's menu
     titleView: <div className={staticClasses.Title}>Insignia</div>,
     // The content of your plugin's menu
-    content: <Content />,
+    content: <ContentPage />,
     // The icon displayed in the plugin list
     icon: <InsigniaIcon />,
     // The function triggered when your plugin unloads

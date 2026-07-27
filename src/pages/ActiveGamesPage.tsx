@@ -1,6 +1,6 @@
 import { PanelSection, PanelSectionRow } from "@decky/ui";
-import { Header } from "./Header";
-import { StatRow } from "./StatRow";
+import { Header } from "../components/Header";
+import { StatRow } from "../components/StatRow";
 import { getActiveGames } from "../api";
 import { useIsOnline } from "../hooks/useIsOnline";
 import { useRefreshableData } from "../hooks/useRefreshableData";

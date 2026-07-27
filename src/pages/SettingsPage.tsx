@@ -1,9 +1,9 @@
 import { PanelSection, PanelSectionRow, ToggleField } from "@decky/ui";
 import { useState, useCallback } from "react";
-import { Header } from "./Header";
+import { Header } from "../components/Header";
 import { playcountBadgeEnabled, tileBadgeEnabled, setPlaycountBadgeEnabled, setTileBadgeEnabled } from "../settingsState";
 import { setPlaycountBadgeEnabledBackend, setTileBadgeEnabledBackend } from "../api";
-import { scanAndBadgeTiles } from "../tileBadge";
+import { scanAndBadgeTiles } from "../patches/libraryHome";
 
 export function SettingsPage({ onBack }: { onBack: () => void }) {
   const [enabled, setEnabled] = useState(playcountBadgeEnabled);

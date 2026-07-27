@@ -1,7 +1,7 @@
 import { PanelSection, PanelSectionRow, DialogButton, ModalRoot, showModal } from "@decky/ui";
 import { useCallback } from "react";
 import { FaTimes } from "react-icons/fa";
-import { Header, ICON_BUTTON_STYLE } from "./Header";
+import { Header, ICON_BUTTON_STYLE } from "../components/Header";
 import { getUpcomingEvents } from "../api";
 import { InsigniaEvent } from "../types";
 import { useIs24HourClock } from "../hooks/useIs24HourClock";
