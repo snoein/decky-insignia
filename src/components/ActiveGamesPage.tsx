@@ -3,7 +3,8 @@ import { useEffect, useState, useCallback } from "react";
 import { Header } from "./Header";
 import { StatRow } from "./StatRow";
 import { getActiveGames } from "../api";
-import { ActiveGamesResponse, EConnectivityTestResult } from "../types";
+import { ActiveGamesResponse } from "../types";
+import { useIsOnline } from "../hooks/useIsOnline";
 
 // Matches the backend's ACTIVE_GAMES_CACHE_TTL_SECONDS, so the panel's
 // background poll lands right as the server-side cache entry expires instead
@@ -14,15 +15,7 @@ export function ActiveGamesPage({ onBack }: { onBack: () => void }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [stats, setStats] = useState<ActiveGamesResponse | null>(null);
-  const [connectivity, setConnectivity] = useState(EConnectivityTestResult.Unknown);
-
-  useEffect(() => {
-    const registration = SteamClient.System.Network.RegisterForConnectivityTestChanges(
-      (test) => setConnectivity(test.eConnectivityTestResult)
-    );
-    SteamClient.System.Network.ForceTestConnectivity();
-    return () => registration.unregister();
-  }, []);
+  const isOnline = useIsOnline();
 
   // `background` polls skip the loading/refreshing indicators so the
   // periodic auto-refresh below doesn't flash the "Loading..." state or spin
@@ -76,12 +69,9 @@ export function ActiveGamesPage({ onBack }: { onBack: () => void }) {
   }
 
   if (!stats || stats.error) {
-    const offline =
-      connectivity !== EConnectivityTestResult.Unknown &&
-      connectivity !== EConnectivityTestResult.Connected;
-    const message = offline
-      ? "No internet connection. Check your wifi."
-      : "Could not load stats. Insignia service may be unreachable.";
+    const message = isOnline
+      ? "Could not load stats. Insignia service may be unreachable."
+      : "No internet connection. Check your wifi.";
 
     return (
       <PanelSection>
