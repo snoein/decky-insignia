@@ -9,11 +9,23 @@ import sys
 import decky
 import asyncio
 
-# Must run before importing insignia_backend.xbox_shortcuts, which imports
-# vdf from py_modules at module scope.
+# decky-loader execs this file via importlib.spec_from_file_location rather
+# than running it as a normal script, so unlike a normal `python main.py`
+# invocation, this file's own directory is never added to sys.path -- it
+# only appends py_modules itself. Both inserts must run before importing
+# python_backend: the directory one so the package is importable at all, and
+# the py_modules one before xbox_shortcuts, which imports vdf from
+# py_modules at module scope.
+sys.path.insert(0, os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "py_modules"))
 
-from insignia_backend import events, settings, stats, xbox_shortcuts
+# Package-qualified import, not `import settings` etc. directly: decky-loader
+# aliases its own already-imported decky_loader.* submodules to bare names in
+# sys.modules before exec'ing this file (see sandboxed_plugin.py upstream),
+# including decky_loader.settings -> settings. A bare `import settings` here
+# would silently bind to decky-loader's own SettingsManager module instead of
+# ours, since sys.modules is consulted before sys.path.
+from python_backend import events, settings, stats, xbox_shortcuts
 
 
 class Plugin:
