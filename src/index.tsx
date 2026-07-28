@@ -19,20 +19,14 @@ export default definePlugin(() => {
   const libraryHomePatch = routerHook.addPatch("/library/home", patchLibraryHome);
 
   return {
-    // The name shown in various decky menus
     name: "Insignia",
-    // The element displayed at the top of your plugin's menu
     titleView: <div className={staticClasses.Title}>Insignia</div>,
-    // The content of your plugin's menu
     content: <ContentPage />,
-    // The icon displayed in the plugin list
     icon: <InsigniaIcon />,
-    // The function triggered when your plugin unloads
     onDismount() {
       routerHook.removePatch("/library/app/:appid", libraryAppPatch);
       routerHook.removePatch("/library/home", libraryHomePatch);
       stopTileBadging();
-      console.log("Unloading Insignia")
     },
   };
 });

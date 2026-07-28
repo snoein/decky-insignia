@@ -57,21 +57,13 @@ class Plugin:
         current["tileBadgeEnabled"] = bool(enabled)
         settings.save_settings(current)
 
-    # Asyncio-compatible long-running code, executed in a task when the plugin is loaded
     async def _main(self):
         self.loop = asyncio.get_event_loop()
-        decky.logger.info("Insignia started!")
 
-    # Function called first during the unload process, utilize this to handle your plugin being stopped, but not
-    # completely removed
     async def _unload(self):
-        decky.logger.info("Goodnight World!")
         pass
 
-    # Function called after `_unload` during uninstall, utilize this to clean up processes and other remnants of your
-    # plugin that may remain on the system
     async def _uninstall(self):
-        decky.logger.info("Goodbye World!")
         pass
 
     # Called once, before `_main()`, on every plugin start. Optional -- decky-loader
