@@ -1,10 +1,10 @@
 import { staticClasses } from "@decky/ui";
 import { definePlugin, routerHook } from "@decky/api";
-import { InsigniaIcon } from "./InsigniaIcon";
+import { InsigniaIcon } from "./components/InsigniaIcon";
 import { initUse24HourClock } from "./hooks/useIs24HourClock";
 import { getPlaycountBadgeEnabled, getTileBadgeEnabled } from "./api";
-import { setPlaycountBadgeEnabled, setTileBadgeEnabled } from "./settingsState";
-import { loadXboxRomAppIds } from "./xboxRomIds";
+import { setPlaycountBadgeEnabled, setTileBadgeEnabled } from "./state/settingsState";
+import { loadXboxRomAppIds } from "./state/xboxRomIds";
 import { patchLibraryApp } from "./patches/libraryApp";
 import { patchLibraryHome, stopTileBadging } from "./patches/libraryHome";
 import { ContentPage } from "./pages/ContentPage";

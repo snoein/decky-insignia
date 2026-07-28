@@ -1,7 +1,7 @@
 import { findSP } from "@decky/ui";
-import { xboxRomAppIdSet, loadXboxRomAppIds } from "../xboxRomIds";
-import { findMatchingInsigniaGame } from "../gameMatching";
-import { tileBadgeEnabled } from "../settingsState";
+import { xboxRomAppIdSet, loadXboxRomAppIds } from "../state/xboxRomIds";
+import { findMatchingInsigniaGame } from "../game-data/gameMatching";
+import { tileBadgeEnabled } from "../state/settingsState";
 
 const TILE_BADGE_CLASS = "insignia-tile-badge";
 

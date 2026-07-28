@@ -1,11 +1,11 @@
 import { afterPatch, useParams } from "@decky/ui";
 import { useEffect, useState, useRef } from "react";
 import { createPortal } from "react-dom";
-import { InsigniaIcon } from "../InsigniaIcon";
+import { InsigniaIcon } from "../components/InsigniaIcon";
 import { getGameOnlineCount } from "../api";
-import { xboxRomAppIdSet, loadXboxRomAppIds } from "../xboxRomIds";
-import { findMatchingInsigniaGame } from "../gameMatching";
-import { playcountBadgeEnabled } from "../settingsState";
+import { xboxRomAppIdSet, loadXboxRomAppIds } from "../state/xboxRomIds";
+import { findMatchingInsigniaGame } from "../game-data/gameMatching";
+import { playcountBadgeEnabled } from "../state/settingsState";
 import { useIsOnline } from "../hooks/useIsOnline";
 
 // Position/size/color matched to the "X Online" player-count badge another

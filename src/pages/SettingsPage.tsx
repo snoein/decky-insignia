@@ -1,7 +1,7 @@
 import { PanelSection, PanelSectionRow, ToggleField } from "@decky/ui";
 import { useState, useCallback } from "react";
 import { Header } from "../components/Header";
-import { playcountBadgeEnabled, tileBadgeEnabled, setPlaycountBadgeEnabled, setTileBadgeEnabled } from "../settingsState";
+import { playcountBadgeEnabled, tileBadgeEnabled, setPlaycountBadgeEnabled, setTileBadgeEnabled } from "../state/settingsState";
 import { setPlaycountBadgeEnabledBackend, setTileBadgeEnabledBackend } from "../api";
 import { scanAndBadgeTiles } from "../patches/libraryHome";
 

@@ -1,4 +1,4 @@
-import { getXboxRomAppIds } from "./api";
+import { getXboxRomAppIds } from "../api";
 
 export let xboxRomAppIdSet: Set<string> | null = null;
 
