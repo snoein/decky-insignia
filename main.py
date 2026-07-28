@@ -74,22 +74,23 @@ class Plugin:
         decky.logger.info("Goodbye World!")
         pass
 
-    # Migrations that should be performed before entering `_main()`.
+    # Called once, before `_main()`, on every plugin start. Optional -- decky-loader
+    # only invokes it if defined, so an empty body is a safe no-op.
+    #
+    # Not needed for renaming settings keys or app-side data formats -- that's
+    # just a plain code change in python_backend/settings.py. It's for moving
+    # whole files/directories when their *path* changes, since decky.migrate_*
+    # works by path existence, not by comparing versions (decky.DECKY_PLUGIN_VERSION
+    # is the current version only; there's no "previous version" passed in here).
+    #
+    # The one concrete case where this repo would need it: if the plugin is ever
+    # renamed from "Insignia", since DECKY_PLUGIN_SETTINGS_DIR/RUNTIME_DIR/LOG_DIR
+    # are all derived from the plugin name. Old settings would otherwise appear
+    # to vanish under the new name. Example:
+    #
+    #   decky.migrate_settings(os.path.join(decky.DECKY_HOME, "settings", "Insignia"))
+    #   decky.migrate_runtime(os.path.join(decky.DECKY_HOME, "data", "Insignia"))
+    #   decky.migrate_logs(os.path.join(decky.DECKY_HOME, "logs", "Insignia"))
     async def _migration(self):
-        decky.logger.info("Migrating")
-        # Here's a migration example for logs:
-        # - `~/.config/decky-template/template.log` will be migrated to `decky.decky_LOG_DIR/template.log`
-        decky.migrate_logs(os.path.join(decky.DECKY_USER_HOME,
-                                               ".config", "decky-template", "template.log"))
-        # Here's a migration example for settings:
-        # - `~/homebrew/settings/template.json` is migrated to `decky.decky_SETTINGS_DIR/template.json`
-        # - `~/.config/decky-template/` all files and directories under this root are migrated to `decky.decky_SETTINGS_DIR/`
-        decky.migrate_settings(
-            os.path.join(decky.DECKY_HOME, "settings", "template.json"),
-            os.path.join(decky.DECKY_USER_HOME, ".config", "decky-template"))
-        # Here's a migration example for runtime data:
-        # - `~/homebrew/template/` all files and directories under this root are migrated to `decky.decky_RUNTIME_DIR/`
-        # - `~/.local/share/decky-template/` all files and directories under this root are migrated to `decky.decky_RUNTIME_DIR/`
-        decky.migrate_runtime(
-            os.path.join(decky.DECKY_HOME, "template"),
-            os.path.join(decky.DECKY_USER_HOME, ".local", "share", "decky-template"))
+        pass
+
