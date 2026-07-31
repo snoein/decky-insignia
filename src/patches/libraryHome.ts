@@ -4,18 +4,41 @@ import { findMatchingInsigniaGame } from "../game-data/gameMatching";
 import { tileBadgeEnabled } from "../state/settingsState";
 
 const TILE_BADGE_CLASS = "insignia-tile-badge";
+const TILE_BADGE_STYLE_TAG_ID = "insignia-tile-badge-styles";
+
+// A poster's rendered width varies enormously between contexts sharing this
+// same scan (a home-shelf hero tile measured live at ~442px vs. a narrower
+// tile elsewhere at ~134px), so a single fixed badge size reads fine in one
+// and comically large in the other. Scaling as a fraction of the poster's
+// own width (see computeBadgeSize), clamped to this range, keeps it looking
+// like the same badge everywhere on the biggest tiles, without shrinking
+// below legibility on the smallest.
+const TILE_BADGE_MIN_SIZE = 21;
+const TILE_BADGE_MAX_SIZE = 42;
+const TILE_BADGE_SIZE_RATIO = 0.195;
+
+function computeBadgeSize(posterWidth: number): number {
+  return Math.round(Math.min(TILE_BADGE_MAX_SIZE, Math.max(TILE_BADGE_MIN_SIZE, posterWidth * TILE_BADGE_SIZE_RATIO)));
+}
+
+// The badge's circular fill color -- no separate border ring on top of it;
+// the icon's own artwork already leaves whitespace around its silhouette,
+// so that fill alone reads as a clean circle without needing an outline.
+// rgb(14, 20, 27), fully opaque, is the exact fill Steam's own tile
+// status-icon pill uses (measured live via devtools) -- it isn't a tinted
+// semi-transparent color there, so matching it needs full opacity too.
+const TILE_BADGE_COLOR = "rgb(14, 20, 27)";
 
 const TILE_BADGE_STYLE = {
   position: "absolute",
-  // Matches decky-nonsteam-badges' own 4px inset for its bottom-right badge
-  // on the same tiles, so both badges read as the same family of corner
-  // pills instead of one hugging the edge tighter than the other.
-  top: "4px",
-  right: "4px",
-  width: "16px",
-  height: "16px",
+  // Matches decky-nonsteam-badges' own bottom-left placement (4px inset) on
+  // the same tiles, so both badges read as the same family of corner pills.
+  // Width/height aren't set here -- they're computed per-tile at creation
+  // time from the poster's own rendered size (see computeBadgeSize above).
+  bottom: "4px",
+  left: "4px",
   borderRadius: "50%",
-  backgroundColor: "#1a9fff",
+  backgroundColor: TILE_BADGE_COLOR,
   color: "#fff",
   display: "flex",
   alignItems: "center",
@@ -24,20 +47,51 @@ const TILE_BADGE_STYLE = {
   pointerEvents: "none",
 } as const;
 
-// Same artwork as InsigniaIcon, inlined as a markup string rather than
-// rendered via React: tile badges are stamped directly onto raw DOM nodes
-// found by scanAndBadgeTiles, outside the plugin's React tree. The mask id
-// is parameterized so each tile's badge gets a unique one -- reusing one id
-// across many badges in the same document would make later <mask> elements
-// unreachable by reference.
-function tileBadgeIconMarkup(maskId: string): string {
-  return `<svg viewBox="20 80 572 632" width="10" height="10" fill="currentColor">
-    <mask id="${maskId}" maskUnits="userSpaceOnUse">
-      <rect x="0" y="0" width="612" height="792" fill="white" />
-      <path fill="black" transform="translate(306 396) scale(0.91) translate(-306 -396)" d="M540.324 551.723 323.69 676.651a32.618 32.618 0 0 1-32.444.083L71.833 551.693a36.09 36.09 0 0 1-18.223-31.359V274.249a36.087 36.087 0 0 1 18.127-31.304l218.209-127.627a32.619 32.619 0 0 1 32.493.013l217.842 125.23a36.095 36.095 0 0 1 18.106 31.291V520.46a36.085 36.085 0 0 1-18.063 31.263z" />
-    </mask>
-    <path mask="url(#${maskId})" d="M307.395 693.432a45.12 45.12 0 0 1-22.301-5.909L65.683 562.482c-15.106-8.607-24.492-24.758-24.492-42.148V274.249c0-17.329 9.336-33.452 24.363-42.075l218.123-127.576a45.17 45.17 0 0 1 22.51-6.028 45.085 45.085 0 0 1 22.444 5.991L546.473 229.79c15.01 8.63 24.333 24.743 24.333 42.061v248.606c0 17.286-9.303 33.392-24.278 42.025L329.892 687.41a45.074 45.074 0 0 1-22.497 6.022z" />
-    <path d="M272 195h68v410h-68z" />
+// Hidden by default and only faded in while its tile is hovered/focused.
+// This has to live in a real stylesheet rather than the badge's inline style
+// (TILE_BADGE_STYLE above) since inline styles can't express a :hover/
+// :focus-within rule -- and it's keyed off the tile ancestor, not the badge
+// itself, so pointer-events: none on the badge doesn't stop it from
+// matching. `.gpfocuswithin` is the class Steam's own UI toggles on a tile
+// while it has gamepad focus (confirmed live in devtools); :focus-within
+// alone also happens to work since Steam moves real DOM focus along with
+// it, but keeping both means a badge doesn't just depend on that overlap.
+function ensureTileBadgeStyles(doc: Document) {
+  if (doc.getElementById(TILE_BADGE_STYLE_TAG_ID)) return;
+  const style = doc.createElement("style");
+  style.id = TILE_BADGE_STYLE_TAG_ID;
+  style.textContent = `
+    .${TILE_BADGE_CLASS} {
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+    div[role="listitem"]:hover .${TILE_BADGE_CLASS},
+    div[role="listitem"]:focus-within .${TILE_BADGE_CLASS},
+    div[role="listitem"].gpfocuswithin .${TILE_BADGE_CLASS},
+    div[role="gridcell"]:hover .${TILE_BADGE_CLASS},
+    div[role="gridcell"]:focus-within .${TILE_BADGE_CLASS},
+    div[role="gridcell"].gpfocuswithin .${TILE_BADGE_CLASS} {
+      opacity: 1;
+    }
+  `;
+  doc.head.appendChild(style);
+}
+
+// The official Insignia logo (https://insignia.live/img/logo.svg), inlined
+// as a markup string rather than rendered via React: tile badges are
+// stamped directly onto raw DOM nodes found by scanAndBadgeTiles, outside
+// the plugin's React tree. Unlike InsigniaIcon (the monochrome mark kept for
+// the QAM entry itself), this is full-color and self-contained, so it's
+// used wherever the badge needs to read as "the Insignia logo" rather than
+// a single-color glyph matching surrounding text.
+function tileBadgeIconMarkup(size: number): string {
+  return `<svg viewBox="0 0 612 792" width="${size}" height="${size}">
+    <path fill="#98C8FF" d="M307.395 693.432a45.12 45.12 0 0 1-22.301-5.909L65.683 562.482c-15.106-8.607-24.492-24.758-24.492-42.148V274.249c0-17.329 9.336-33.452 24.363-42.075l218.123-127.576a45.17 45.17 0 0 1 22.51-6.028 45.085 45.085 0 0 1 22.444 5.991L546.473 229.79c15.01 8.63 24.333 24.743 24.333 42.061v248.606c0 17.286-9.303 33.392-24.278 42.025L329.892 687.41a45.074 45.074 0 0 1-22.497 6.022z" />
+    <path fill="#0A0E13" d="M540.324 551.723 323.69 676.651a32.618 32.618 0 0 1-32.444.083L71.833 551.693a36.09 36.09 0 0 1-18.223-31.359V274.249a36.087 36.087 0 0 1 18.127-31.304l218.209-127.627a32.619 32.619 0 0 1 32.493.013l217.842 125.23a36.095 36.095 0 0 1 18.106 31.291V520.46a36.085 36.085 0 0 1-18.063 31.263z" />
+    <g fill="#11171F">
+      <path d="M558.389 368.111V344.65H53.612v23.461h80.147v71.392H53.612v23.461h175.001v144.214H169.2l41.166 23.462h29.973c3.088 0 6.111-1.252 8.296-3.438s3.437-5.205 3.437-8.296V451.233c0-3.091-1.252-6.11-3.437-8.296a11.806 11.806 0 0 0-8.296-3.436H157.22V368.11h305.599v71.392h-81.687a11.806 11.806 0 0 0-8.296 3.436 11.805 11.805 0 0 0-3.438 8.296V618.91c0 3.088 1.252 6.111 3.438 8.296a11.804 11.804 0 0 0 8.296 3.438h22.341l40.683-23.461h-51.295V462.967H558.393v-23.461h-72.109v-71.392h72.106l-.001-.003zM213.661 270.041h190.753c3.089 0 6.111-1.251 8.297-3.436a11.81 11.81 0 0 0 3.437-8.296v-89.113l-23.461-13.488v90.872H225.391v-93.504l-23.462 13.721v91.514c0 3.088 1.252 6.109 3.438 8.296a11.808 11.808 0 0 0 8.294 3.434z" />
+    </g>
+    <path fill="#2A71C9" d="M281.924 170.05h49.898v459.876h-49.898z" />
   </svg>`;
 }
 
@@ -114,39 +168,29 @@ function getTileAppId(tile: Element): string | null {
   return null;
 }
 
-// Both view roles wrap the poster <img> in a Steam-authored container with
-// an inline `position: relative` style that tightly bounds the artwork
-// itself -- decky-nonsteam-badges anchors its own tile badge to the same
-// container (confirmed live via its shipped source). The tile/gridcell
-// element is considerably bigger than that (it also covers the title-text
-// row below the art in list view, and hover-scale headroom), so anchoring
-// to it instead -- as this used to -- puts percentage-based insets like
-// "top: 2px; right: 2px" outside the visible poster rather than in its
-// corner. Walk up from the image to find that tight container first, and
-// only fall back to the coarser tile-level heuristics if no image (or no
-// such ancestor) is found.
-function findPosterContainer(tile: HTMLElement, img: HTMLElement): HTMLElement | null {
-  let node: HTMLElement | null = img.parentElement;
-  while (node && node !== tile) {
-    if (node.style.position === "relative") return node;
-    node = node.parentElement;
-  }
-  return null;
-}
-
+// Both view roles wrap the poster <img> in its own container that tightly
+// bounds the artwork -- confirmed live across many tiles and focus states
+// that this wrapper's rendered rect is always identical to the <img>'s own,
+// pixel for pixel. (An earlier version of this walked further up looking
+// for an ancestor with an inline `position: relative` style, matching how
+// decky-nonsteam-badges anchors its own badge -- but that inline style
+// never actually appears on this Steam version, so it always fell through
+// to the tile/gridcell element instead. That element is considerably
+// bigger than the poster itself -- it also covers the title-text row below
+// the art in list view -- so a corner inset like "bottom: 4px; left: 4px"
+// against it lands below the visible poster rather than in its corner.)
+// The wrapper already has its own position: absolute (from a CSS class, not
+// an inline style), which works just as well as position: relative as a
+// positioning context for our absolutely-positioned badge.
 function getBadgeTargetElement(tile: HTMLElement): HTMLElement {
   const img = tile.querySelector("img") as HTMLElement | null;
-  if (img) {
-    const posterContainer = findPosterContainer(tile, img);
-    if (posterContainer) return posterContainer;
-  }
+  if (img?.parentElement) return img.parentElement;
   if (tile.getAttribute("role") === "gridcell") {
     return (tile.firstElementChild as HTMLElement) ?? tile;
   }
   return tile;
 }
 
-let tileBadgeIdCounter = 0;
 let tileObserver: MutationObserver | null = null;
 let tileScanInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -177,6 +221,8 @@ export function scanAndBadgeTiles(tiles?: Iterable<HTMLElement>) {
   const win = findSP() as any;
   if (!win) return;
 
+  ensureTileBadgeStyles(win.document);
+
   let tileList: HTMLElement[];
   if (tiles) {
     tileList = Array.from(tiles);
@@ -186,12 +232,10 @@ export function scanAndBadgeTiles(tiles?: Iterable<HTMLElement>) {
   }
   tileList.forEach((tile) => {
     const target = getBadgeTargetElement(tile);
-    // Scoped to the whole tile, not just the current target: which element
-    // findPosterContainer picks for a given tile can change across scans (the
-    // tight poster container only gets its inline `position: relative` once
-    // Steam finishes laying out the artwork, so an early scan can fall back
-    // to the coarser tile-level target before a later scan finds the right
-    // one). Scoping the lookup to `target` alone missed a badge left behind
+    // Scoped to the whole tile, not just the current target: getBadgeTargetElement
+    // falls back to the tile itself when a tile's <img> hasn't mounted yet, so an
+    // early scan can badge that fallback before a later scan finds the real image
+    // wrapper. Scoping the lookup to `target` alone would miss a badge left behind
     // on that earlier, wrong target, producing a duplicate badge per tile.
     const existingBadge = tile.querySelector(`.${TILE_BADGE_CLASS}`);
     const appId = getTileAppId(tile);
@@ -229,10 +273,14 @@ export function scanAndBadgeTiles(tiles?: Iterable<HTMLElement>) {
     if (win.getComputedStyle(target).position === "static") {
       target.style.position = "relative";
     }
+    const badgeSize = computeBadgeSize(target.getBoundingClientRect().width);
     const badge = win.document.createElement("div");
     badge.className = TILE_BADGE_CLASS;
-    Object.assign(badge.style, TILE_BADGE_STYLE);
-    badge.innerHTML = tileBadgeIconMarkup(`insignia-tile-badge-ring-${tileBadgeIdCounter++}`);
+    Object.assign(badge.style, TILE_BADGE_STYLE, { width: `${badgeSize}px`, height: `${badgeSize}px` });
+    // No border to leave room for anymore -- the logo's own artwork already
+    // has whitespace around its silhouette within its viewBox, so filling
+    // the whole circle with it still reads as a badge with breathing room.
+    badge.innerHTML = tileBadgeIconMarkup(badgeSize);
     target.appendChild(badge);
   });
 }
@@ -289,6 +337,7 @@ export function stopTileBadging() {
   }
   const win = findSP();
   win?.document.querySelectorAll(`.${TILE_BADGE_CLASS}`).forEach((el: Element) => el.remove());
+  win?.document.getElementById(TILE_BADGE_STYLE_TAG_ID)?.remove();
 }
 
 // Signal-only patch: the route firing just tells us the home page mounted,
