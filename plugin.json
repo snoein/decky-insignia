@@ -1,11 +1,11 @@
 {
   "name": "Insignia",
   "author": "snoein",
-  "flags": ["debug", "_root"],
+  "flags": [],
   "api_version": 1,
   "publish": {
-    "tags": ["insignia", "stats", "network"],
-    "description": "Shows currently active games and player counts on the Insignia network in the Quick Access Menu.",
+    "tags": ["xbox", "stats", "multiplayer", "events", "library badge"],
+    "description": "Shows currently active games, player counts, and upcoming events from the Insignia network in the Quick Access Menu, adds a playcount badge to each game's library page, and marks Insignia-supported Xbox ROM games with an icon badge on their tiles.",
     "image": "https://opengraph.githubassets.com/1/SteamDeckHomebrew/PluginLoader"
   }
 }
