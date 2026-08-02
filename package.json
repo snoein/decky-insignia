@@ -1,6 +1,6 @@
 {
   "name": "decky-insignia",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Displays currently active games and player counts on the Insignia network in the Quick Access Menu.",
   "type": "module",
   "scripts": {
