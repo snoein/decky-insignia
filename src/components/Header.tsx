@@ -1,7 +1,8 @@
 import { PanelSectionRow, Focusable, DialogButton, staticClasses } from "@decky/ui";
 import { FaSyncAlt, FaArrowLeft } from "react-icons/fa";
+import type { CSSProperties } from "react";
 
-export const ICON_BUTTON_STYLE = {
+export const ICON_BUTTON_STYLE: CSSProperties = {
   height: "28px",
   width: "28px",
   padding: "0",
@@ -9,7 +10,7 @@ export const ICON_BUTTON_STYLE = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-} as const;
+};
 
 export function Header({
   title,

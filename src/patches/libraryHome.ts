@@ -1,4 +1,5 @@
 import { findSP } from "@decky/ui";
+import type { CSSProperties } from "react";
 import { xboxRomAppIdSet, loadXboxRomAppIds } from "../state/xboxRomIds";
 import { findMatchingInsigniaGame } from "../game-data/gameMatching";
 import { tileBadgeEnabled } from "../state/settingsState";
@@ -29,7 +30,7 @@ function computeBadgeSize(posterWidth: number): number {
 // semi-transparent color there, so matching it needs full opacity too.
 const TILE_BADGE_COLOR = "rgb(14, 20, 27)";
 
-const TILE_BADGE_STYLE = {
+const TILE_BADGE_STYLE: CSSProperties = {
   position: "absolute",
   // Matches decky-nonsteam-badges' own bottom-left placement (4px inset) on
   // the same tiles, so both badges read as the same family of corner pills.
@@ -45,7 +46,7 @@ const TILE_BADGE_STYLE = {
   justifyContent: "center",
   zIndex: 50,
   pointerEvents: "none",
-} as const;
+};
 
 // Hidden by default and only faded in while its tile is hovered/focused.
 // This has to live in a real stylesheet rather than the badge's inline style

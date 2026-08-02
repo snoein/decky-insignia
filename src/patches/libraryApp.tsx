@@ -1,5 +1,6 @@
 import { afterPatch, useParams } from "@decky/ui";
 import { useEffect, useState, useRef } from "react";
+import type { CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { InsigniaIcon } from "../components/InsigniaIcon";
 import { getGameOnlineCount } from "../api";
@@ -12,14 +13,14 @@ import { useIsOnline } from "../hooks/useIsOnline";
 // installed plugin renders in the same top-right spot on this page, so
 // Insignia's badge reads as part of the same family of pills rather than a
 // one-off.
-const LIBRARY_BADGE_WRAPPER_STYLE = {
+const LIBRARY_BADGE_WRAPPER_STYLE: CSSProperties = {
   position: "absolute",
   top: "50px",
   right: "20px",
   zIndex: 1000,
-} as const;
+};
 
-const LIBRARY_BADGE_PILL_STYLE = {
+const LIBRARY_BADGE_PILL_STYLE: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
@@ -35,16 +36,16 @@ const LIBRARY_BADGE_PILL_STYLE = {
   boxShadow: "rgba(0, 0, 0, 0.2) 0px 2px 4px",
   border: "none",
   pointerEvents: "none",
-} as const;
+};
 
-const LIBRARY_BADGE_ICON_STYLE = {
+const LIBRARY_BADGE_ICON_STYLE: CSSProperties = {
   display: "flex",
   alignItems: "center",
   marginRight: "6px",
   fontSize: "14px",
   color: "#4CAF50",
   filter: "drop-shadow(rgba(76, 175, 80, 0.5) 0px 0px 2px)",
-} as const;
+};
 
 // patchLibraryApp wraps the page's own rendered root in a position:relative
 // div spanning the full (non-scrolling) viewport -- the page's hero banner
