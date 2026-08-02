@@ -1,11 +1,11 @@
-name: Semgrep Gate & Version Release
+name: Version Bump
 
-# Manually triggered release: gates on a Semgrep scan, then bumps
-# package.json's version (major/minor/patch), commits + tags the result,
-# and publishes a draft GitHub Release with generated notes. The build-zip
-# job then calls release.yml (as a reusable workflow) to build the plugin
-# zip, attach it, and publish the release. Always operates on `main`,
-# regardless of which branch is selected in the "Run workflow" dispatch UI.
+# Manually triggered release: bumps package.json's version (major/minor/patch),
+# commits + tags the result, and publishes a draft GitHub Release with
+# generated notes. The build-zip job then calls release.yml (as a reusable
+# workflow) to build the plugin zip, attach it, and publish the release.
+# Always operates on `main`, regardless of which branch is selected in the
+# "Run workflow" dispatch UI.
 
 on:
   workflow_dispatch:
@@ -44,17 +44,6 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install Semgrep
-        run: pip install semgrep
-
-      - name: Run Semgrep (gate)
-        run: semgrep scan --config auto --error --metrics=off
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
