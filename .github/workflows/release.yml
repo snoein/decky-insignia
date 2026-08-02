@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing tag to build and attach Insignia.zip to (e.g. v0.1.0)"
+        description: "Existing tag to build and attach the versioned zip to (e.g. v0.1.0)"
         required: true
         type: string
 
@@ -53,8 +53,14 @@ jobs:
       - name: Build plugin zip
         run: ./cli/decky plugin build "$GITHUB_WORKSPACE"
 
+      # The CLI always names its output Insignia.zip (plugin.json's `name`,
+      # no version templating available) — rename it here so the download is
+      # identifiable by version on the release page.
+      - name: Version the zip filename
+        run: mv out/Insignia.zip "out/Insignia-${{ steps.tag.outputs.name }}.zip"
+
       - name: Attach zip to release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.name }}
-          files: out/Insignia.zip
+          files: out/Insignia-${{ steps.tag.outputs.name }}.zip
