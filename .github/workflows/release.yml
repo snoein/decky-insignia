@@ -1,0 +1,60 @@
+name: Release plugin zip
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to build and attach Insignia.zip to (e.g. v0.1.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve tag
+        id: tag
+        run: echo "name=${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ steps.tag.outputs.name }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # decky's build CLI doesn't run pip itself: build_py_modules() in its
+      # build.rs just copies an existing py_modules/ dir verbatim (or skips it
+      # silently if missing). Vendoring it here is what actually puts
+      # requests/vdf into the zip.
+      - name: Vendor Python backend deps
+        run: pip install --target=py_modules -r requirements.txt
+
+      # The decky CLI binary isn't checked in (cli/ is gitignored); fetch the
+      # same Linux x86_64 build .vscode/setup.sh downloads for local dev. No
+      # pnpm/Node setup needed here: build_frontend() in the CLI's build.rs
+      # builds the frontend inside its own ghcr.io/steamdeckhomebrew/builder
+      # Docker image, not on the host running the CLI.
+      - name: Download Decky CLI
+        run: |
+          mkdir -p cli
+          curl -fL -o cli/decky https://github.com/SteamDeckHomebrew/cli/releases/latest/download/decky-linux-x86_64
+          chmod +x cli/decky
+
+      - name: Build plugin zip
+        run: ./cli/decky plugin build "$GITHUB_WORKSPACE"
+
+      - name: Attach zip to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          files: out/Insignia.zip
