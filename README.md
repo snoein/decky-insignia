@@ -8,7 +8,7 @@ A [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) plugin for t
 
   ![Library page badge](images/library-page-badge.jpg)
 
-- **Active Games** — currently active Insignia games with live player/lobby counts, in the QAM sidebar.
+- **Active Games** — currently active Insignia games with live player/lobby counts, in the Quick Access Menu sidebar.
 
   ![Active Games panel](images/qam-active-games.jpg)
 
@@ -24,11 +24,23 @@ A [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) plugin for t
 
   ![Settings panel](images/qam-settings.jpg)
 
+## Installation
+
+Insignia isn't in the Decky Store yet, so install it from a plugin zip via Decky's developer options:
+
+1. On the Deck, switch to Desktop Mode.
+2. Download a zip — either grab one from the [Releases page](https://github.com/snoein/decky-insignia/releases), or build it yourself (see [Developers](#developers) below); a local `builddeploy`/`build` run produces `out/Insignia.zip`.
+3. Switch back to Gaming Mode.
+4. Open the Quick Access Menu, click the Decky gear icon to open its settings, go to the **General** tab, and enable **Developer Mode** — this adds a **Developer** section to Decky's settings.
+5. In that Developer section, click **Install Plugin from Zip** and select the zip from step 2.
+
+Insignia should now appear in the Quick Access Menu plugin list.
+
 ## How it works
 
 A Decky plugin has two independently-built halves that communicate over a Python↔JS bridge (`@decky/api`'s `callable()`):
 
-- **Frontend** (`src/`) — a React component tree built by rollup into `dist/index.js`, which decky-loader loads directly. The QAM sidebar has no built-in router, so navigation between panels (`MenuPage`, `ActiveGamesPage`, `EventsPage`, `SettingsPage`) is local `useState`. Route patches (`src/patches/`) inject the library-page badge and scan/badge home-page tiles via a `MutationObserver`.
+- **Frontend** (`src/`) — a React component tree built by rollup into `dist/index.js`, which decky-loader loads directly. The Quick Access Menu sidebar has no built-in router, so navigation between panels (`MenuPage`, `ActiveGamesPage`, `EventsPage`, `SettingsPage`) is local `useState`. Route patches (`src/patches/`) inject the library-page badge and scan/badge home-page tiles via a `MutationObserver`.
 - **Backend** (`main.py` + `defaults/python_backend/`) — `main.py`'s `Plugin` class is decky-loader's entry point; its async methods delegate to `python_backend/{stats,events,xbox_shortcuts,settings}.py`. It fetches and caches Insignia API responses, and reads `shortcuts.vdf` directly to identify non-Steam shortcuts pointing at Xbox ROMs.
 
 See [CLAUDE.md](CLAUDE.md) for a detailed architecture writeup, including why the backend code lives under `defaults/python_backend/` rather than a plain `backend/` or `py_modules/`-style directory.
@@ -71,7 +83,7 @@ Get the plugin building locally and running on your Steam Deck.
    ssh -i ~/.ssh/id_rsa deck@<deckip> "echo <deckpass> | sudo -S systemctl restart plugin_loader"
    ```
 
-   Insignia should now appear in the QAM plugin list on the Deck.
+   Insignia should now appear in the Quick Access Menu plugin list on the Deck.
 
 From here, for frontend-only changes, skip the slow Docker rebuild and use the [fast iteration loop](#fast-iteration-loop-frontend-only-changes) below instead.
 
