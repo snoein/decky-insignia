@@ -1,0 +1,99 @@
+name: Semgrep Gate & Version Release
+
+# Manually triggered release: gates on a Semgrep scan, then bumps
+# package.json's version (major/minor/patch), commits + tags the result,
+# and publishes a draft GitHub Release with generated notes. The build-zip
+# job then calls release.yml (as a reusable workflow) to build the plugin
+# zip, attach it, and publish the release. Always operates on `main`,
+# regardless of which branch is selected in the "Run workflow" dispatch UI.
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump type"
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+
+permissions:
+  contents: write
+
+concurrency:
+  group: version-release
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: v${{ steps.bump.outputs.version }}
+    steps:
+      - name: Require dispatch from main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::This workflow only runs against main (selected: ${{ github.ref_name }})." >&2
+          exit 1
+
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      - name: Run Semgrep (gate)
+        run: semgrep scan --config auto --error --metrics=off
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version
+        id: bump
+        run: |
+          pnpm version ${{ inputs.bump }} -m "chore: release v%s"
+          echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Push commit and tag
+        run: git push origin main --follow-tags
+
+      # Created as a draft so it's invisible on the public Releases page
+      # until build-zip attaches the zip and publishes it. If build-zip
+      # fails, this draft is the only visible leftover state (not public),
+      # and re-running the failed job will finish publishing it.
+      - name: Create draft GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.bump.outputs.version }}
+          name: v${{ steps.bump.outputs.version }}
+          generate_release_notes: true
+          draft: true
+
+  build-zip:
+    needs: bump
+    permissions:
+      contents: write
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.bump.outputs.tag }}

@@ -10,6 +10,12 @@ on:
         description: "Existing tag to build and attach the versioned zip to (e.g. v0.1.0)"
         required: true
         type: string
+  workflow_call:
+    inputs:
+      tag:
+        description: "Existing tag to build and attach the versioned zip to (e.g. v0.1.0)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -20,7 +26,7 @@ jobs:
     steps:
       - name: Resolve tag
         id: tag
-        run: echo "name=${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+        run: echo "name=${{ inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -59,8 +65,14 @@ jobs:
       - name: Version the zip filename
         run: mv out/Insignia.zip "out/Insignia-${{ steps.tag.outputs.name }}.zip"
 
+      # draft: false publishes an existing draft release for this tag
+      # (created upstream by version-release.yml) once the zip is attached.
+      # make_latest: legacy (not true) so a manual backfill build against an
+      # old tag can't steal "latest" from a newer release.
       - name: Attach zip to release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.tag.outputs.name }}
           files: out/Insignia-${{ steps.tag.outputs.name }}.zip
+          draft: false
+          make_latest: legacy
