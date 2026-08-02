@@ -66,7 +66,7 @@ jobs:
         run: mv out/Insignia.zip "out/Insignia-${{ steps.tag.outputs.name }}.zip"
 
       # draft: false publishes an existing draft release for this tag
-      # (created upstream by version-release.yml) once the zip is attached.
+      # (created upstream by version-bump.yml) once the zip is attached.
       # make_latest: legacy (not true) so a manual backfill build against an
       # old tag can't steal "latest" from a newer release.
       - name: Attach zip to release

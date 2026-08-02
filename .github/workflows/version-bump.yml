@@ -24,7 +24,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: version-release
+  group: version-bump
   cancel-in-progress: false
 
 jobs:
