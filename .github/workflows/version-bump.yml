@@ -2,7 +2,7 @@ name: Version Bump
 
 # Manually triggered release: bumps package.json's version (major/minor/patch),
 # commits + tags the result, and publishes a draft GitHub Release with
-# generated notes. The build-zip job then calls release.yml (as a reusable
+# generated notes. The build-zip job then calls build-release.yml (as a reusable
 # workflow) to build the plugin zip, attach it, and publish the release.
 # Always operates on `main`, regardless of which branch is selected in the
 # "Run workflow" dispatch UI.
@@ -45,15 +45,15 @@ jobs:
           ref: main
           fetch-depth: 0
 
+      # Version comes from package.json's packageManager/engines.node fields
+      # (single source of truth) rather than being pinned here.
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: package.json
 
       - name: Configure git identity
         run: |
@@ -85,6 +85,6 @@ jobs:
     needs: bump
     permissions:
       contents: write
-    uses: ./.github/workflows/release.yml
+    uses: ./.github/workflows/build-release.yml
     with:
       tag: ${{ needs.bump.outputs.tag }}
