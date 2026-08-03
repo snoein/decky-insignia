@@ -29,7 +29,7 @@ A [Decky Loader](https://github.com/SteamDeckHomebrew/decky-loader) plugin for t
 Insignia isn't in the Decky Store yet, so install it from a plugin zip via Decky's developer options:
 
 1. On the Deck, switch to Desktop Mode.
-2. Download a zip — either grab one from the [Releases page](https://github.com/snoein/decky-insignia/releases), or build it yourself (see [Developers](#developers) below); a local `builddeploy`/`build` run produces `out/Insignia.zip`.
+2. Download a zip — either grab one from the [Releases page](https://github.com/stevensnoeijen/decky-insignia/releases), or build it yourself (see [Developers](#developers) below); a local `builddeploy`/`build` run produces `out/Insignia.zip`.
 3. Switch back to Gaming Mode.
 4. Open the Quick Access Menu, click the Decky gear icon to open its settings, go to the **General** tab, and enable **Developer Mode** — this adds a **Developer** section to Decky's settings.
 5. In that Developer section, click **Install Plugin from Zip** and select the zip from step 2.
@@ -60,7 +60,7 @@ Get the plugin building locally and running on your Steam Deck.
 2. **Clone and install frontend deps**:
 
    ```bash
-   git clone https://github.com/snoein/decky-insignia.git
+   git clone https://github.com/stevensnoeijen/decky-insignia.git
    cd decky-insignia
    pnpm i
    ```
