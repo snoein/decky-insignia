@@ -123,10 +123,10 @@ number, re-run, re-view the PNG, adjust. Things learned doing this the first tim
    actually pushed).
 3. Set `publish.image` to:
    ```
-   https://raw.githubusercontent.com/snoein/decky-insignia/main/publish-image.png
+   https://raw.githubusercontent.com/stevensnoeijen/decky-insignia/main/publish-image.png
    ```
 4. Verify before submitting:
    ```bash
-   curl -sI https://raw.githubusercontent.com/snoein/decky-insignia/main/publish-image.png
+   curl -sI https://raw.githubusercontent.com/stevensnoeijen/decky-insignia/main/publish-image.png
    ```
    Expect `HTTP/2 200` and `content-type: image/png`.
